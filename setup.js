@@ -69,7 +69,7 @@ function schemaExtensionsExists(){
     return new Promise(async function(resolve,reject){
         try{
             var response = await axios.get(
-                "https://"+process.env.TENANT+"/api/v1/meta/schemas/user/default",
+                process.env.TENANT+"/api/v1/meta/schemas/user/default",
                 {
                     headers: {
                         Authorization: 'SSWS '+process.env.API_TOKEN
@@ -143,8 +143,23 @@ function createApplication(publickey){
                 }
             }
             var response = await axios.post(
-                "https://"+process.env.TENANT+"/api/v1/apps",
+                process.env.TENANT+"/api/v1/apps",
                 payload,
+                {
+                    headers: {
+                        Authorization: 'SSWS '+process.env.API_TOKEN
+                    }
+                }
+            )
+
+
+            var grantPayload = {
+                "scopeId": "okta.users.read",
+                "issuer": process.env.TENANT
+            }
+            var enableGrants = await axios.post(
+                process.env.TENANT+"/api/v1/apps/"+response.data.id+"/grants",
+                grantPayload,
                 {
                     headers: {
                         Authorization: 'SSWS '+process.env.API_TOKEN
@@ -188,7 +203,7 @@ function updateSchema(){
                 }
             }
             var response = await axios.post(
-                "https://"+process.env.TENANT+"/api/v1/meta/schemas/user/default",
+                process.env.TENANT+"/api/v1/meta/schemas/user/default",
                 payload,
                 {
                     headers: {
