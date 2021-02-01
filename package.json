@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@okta/okta-sdk-nodejs": "^4.4.0",
+    "aws-sdk": "^2.834.0",
     "axios": "^0.21.1",
     "dotenv": "^8.2.0",
     "fs": "0.0.1-security",

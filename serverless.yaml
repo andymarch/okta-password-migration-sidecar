@@ -1,9 +1,25 @@
 service: okta-pasword-migration-sidecar
 
+custom:
+  mySnsTopic: "${self:service}-${self:provider.stage}-sns-consume"
+  mySnsTopicArn:
+    local:
+      "arn:aws:sns:us-east-1:123456789012:${self:custom.mySnsTopic}"
+    dev:
+      { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.mySnsTopic}" ] ]  }
+    prod:
+     { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.mySnsTopic}" ] ]  }
+
 provider:
   name: aws
   runtime: nodejs12.x
   stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}  
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - SNS:Publish
+      Resource: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.mySnsTopic}" ] ]  }
   environment:
     TENANT: ${file(./config.${opt:stage, self:provider.stage, 'dev'}.json):tenant}
     API_TOKEN: ${file(./config.${opt:stage, self:provider.stage,'dev'}.json):api_secret}
@@ -17,12 +33,36 @@ functions:
     handler: authorizer/handler.fixed
 
   #Dummy API
-  public:
+  verify:
     handler: password-migration.perform
     events:
       - http:
-          path: /
+          path: /verify
           method: post
           authorizer:
             name: auth
             identitySource: method.request.header.Authorization
+
+  verification:
+    handler: okta-event-hook.handler
+    events:
+      - http:
+          path: /complete
+          method: get
+
+  complete:
+    handler: migration-clearup.perform
+    events:
+      - http:
+          path: /complete
+          method: post
+          authorizer:
+            name: auth
+            identitySource: method.request.header.Authorization
+    environment:
+      mySnsTopicArn: ${self:custom.mySnsTopicArn.${self:provider.stage}}
+
+  snsConsume:
+    handler: migration-clearup.handler
+    events:
+      - sns: ${self:custom.mySnsTopic}
