@@ -28,7 +28,7 @@ const acceptPayload = JSON.stringify(
     },
     null,2 ) 
 
-module.exports.perform = async function (event) {
+module.exports.handler = async function (event) {
     const promise = new Promise(function(resolve,reject){
         var payload = JSON.parse(event.body)
         client.getUser(payload.data.context.credential.username)

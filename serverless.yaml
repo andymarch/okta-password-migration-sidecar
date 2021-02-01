@@ -1,14 +1,14 @@
 service: okta-pasword-migration-sidecar
 
 custom:
-  mySnsTopic: "${self:service}-${self:provider.stage}-sns-consume"
-  mySnsTopicArn:
+  snsTopic: "${self:service}-${self:provider.stage}-importPasswordEvent"
+  snsTopicArn:
     local:
-      "arn:aws:sns:us-east-1:123456789012:${self:custom.mySnsTopic}"
+      "arn:aws:sns:us-east-1:123456789012:${self:custom.snsTopic}"
     dev:
-      { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.mySnsTopic}" ] ]  }
+      { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.snsTopic}" ] ]  }
     prod:
-     { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.mySnsTopic}" ] ]  }
+     { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.snsTopic}" ] ]  }
 
 provider:
   name: aws
@@ -19,7 +19,7 @@ provider:
     - Effect: Allow
       Action:
         - SNS:Publish
-      Resource: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.mySnsTopic}" ] ]  }
+      Resource: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.snsTopic}" ] ]  }
   environment:
     TENANT: ${file(./config.${opt:stage, self:provider.stage, 'dev'}.json):tenant}
     API_TOKEN: ${file(./config.${opt:stage, self:provider.stage,'dev'}.json):api_secret}
@@ -30,11 +30,11 @@ provider:
 functions:
   #Authorizers
   auth:
-    handler: authorizer/handler.fixed
+    handler: src/authorizer/handler.fixed
 
-  #Dummy API
-  verify:
-    handler: password-migration.perform
+  # Handle the password import inline hook
+  verifyPassword:
+    handler: src/verifyPassword.handler
     events:
       - http:
           path: /verify
@@ -43,15 +43,16 @@ functions:
             name: auth
             identitySource: method.request.header.Authorization
 
-  verification:
-    handler: okta-event-hook.handler
+  # Handle import password event hook
+  importPasswordEventHookVerification:
+    handler: src/importPasswordEventHook.verify
     events:
       - http:
           path: /complete
           method: get
 
-  complete:
-    handler: migration-clearup.perform
+  importPasswordEventHook:
+    handler: src/importPasswordEventHook.handler
     events:
       - http:
           path: /complete
@@ -60,9 +61,9 @@ functions:
             name: auth
             identitySource: method.request.header.Authorization
     environment:
-      mySnsTopicArn: ${self:custom.mySnsTopicArn.${self:provider.stage}}
+      snsTopicArn: ${self:custom.snsTopicArn.${self:provider.stage}}
 
-  snsConsume:
-    handler: migration-clearup.handler
+  importPasswordEvent:
+    handler: src/importPasswordEventHook.process
     events:
-      - sns: ${self:custom.mySnsTopic}
+      - sns: ${self:custom.snsTopic}
