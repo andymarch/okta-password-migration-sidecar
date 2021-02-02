@@ -7,7 +7,8 @@ const fs = require('fs');
 // registered to Okta.
 console.log("Performing setup...")
 if(process.env.API_TOKEN == null) {
-    reject("API_TOKEN not declared in .env file unable to register client. Set this value and rerun register.")
+    console.error("API_TOKEN not declared in .env file unable to register client. Set this value and rerun register.")
+    return
 }
 else {
     appExists()
@@ -34,9 +35,7 @@ else {
                 console.log("Schema has already been extended");
             }
         })
-    .catch(err => console.log(err))
-
-
+    .catch(err => console.error(err))
 }
 
 function appExists(){
