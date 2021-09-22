@@ -153,7 +153,7 @@ function createApplication(publickey){
 
 
             var grantPayload = {
-                "scopeId": "okta.users.read, okta.users.manage",
+                "scopeId": "okta.users.manage",
                 "issuer": process.env.TENANT
             }
             var enableGrants = await axios.post(
