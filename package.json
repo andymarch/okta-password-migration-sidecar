@@ -15,6 +15,7 @@
     "aws-sdk": "^2.834.0",
     "axios": "^0.21.1",
     "dotenv": "^8.2.0",
+    "firebase-scrypt": "^2.1.0",
     "fs": "0.0.1-security",
     "node-jose": "^2.0.0",
     "pbkdf2": "^3.1.1"
