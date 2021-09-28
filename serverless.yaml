@@ -1,3 +1,5 @@
+org: tohcnam
+app: okta-pasword-migration-sidecar
 service: okta-pasword-migration-sidecar
 
 custom:
@@ -22,7 +24,6 @@ provider:
       Resource: { "Fn::Join" : ["", ["arn:aws:sns:${self:provider.region}:", { "Ref" : "AWS::AccountId" }, ":${self:custom.snsTopic}" ] ]  }
   environment:
     TENANT: ${file(./config.${opt:stage, self:provider.stage, 'dev'}.json):tenant}
-    API_TOKEN: ${file(./config.${opt:stage, self:provider.stage,'dev'}.json):api_secret}
     FIXED_AUTH_SECRET: ${file(./config.${opt:stage, self:provider.stage,'dev'}.json):fixed_auth_secret}
     CLIENT_ID: ${file(./config.${opt:stage, self:provider.stage,'dev'}.json):client_id}
     CLIENT_SECRET_JWT: ${file(./config.${opt:stage, self:provider.stage,'dev'}.json):client_secret_jwt}
