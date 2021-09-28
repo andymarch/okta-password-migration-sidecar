@@ -41,3 +41,4 @@ admin.env
 _meta
 .serverless
 app.key
+config*.json
