@@ -1,40 +1,53 @@
 require('dotenv').config()
 const axios = require('axios')
 var jose = require('node-jose');
+const jwktopem = require('jwk-to-pem')
 const fs = require('fs');
 
 // This is a helper implementation to generate key material and get your client
 // registered to Okta.
 console.log("Performing setup...")
+let serverlessConfig = {
+    "tenant": process.env.TENANT,
+    "fixed_auth_secret": process.env.FIXED_AUTH_SECRET
+}
+
 if(process.env.API_TOKEN == null) {
     console.error("API_TOKEN not declared in .env file unable to register client. Set this value and rerun register.")
     return
 }
 else {
     appExists()
-        .then((value) => {
-                if (!value) {
-                    getKeyStore()
-                        .then((keystore) => keystore.get('appkey1'))
-                        .then((key) => createApplication(key.toJSON()))
-                        .then((data) => console.log(data.label + " created with clientid " + data.id))
-                        .catch(err => console.log(err));
-                }
-                else {
-                    console.log("Service application already exists, skipped app registration");
-                }
-            })
-    .then(schemaExtensionsExists)
-        .then((value) => {
+    .then((value) => {
+        getKeyStore()
+        .then((keystore) => keystore.get('appkey1'))
+        .then((key) => {
+            serverlessConfig.client_secret_jwt = jwktopem(key.toJSON(true), {private: true})
             if (!value) {
-                updateSchema()
-                    .then(() => console.log("Schema updated"))
-                    .catch(err => console.log(err));
-            }
-            else {
-                console.log("Schema has already been extended");
-            }
+                createApplication(key.toJSON())
+                .then((data) => {
+                    serverlessConfig.client_id = data.id;
+                    console.log(data.label + " created with clientid " + data.id);
+                    console.log("content for config.dev.json:\n" + JSON.stringify(serverlessConfig));
+                })
+            } else {
+                console.log("Service application already exists, skipped app registration");
+                console.log("content for config.dev.json:\n" + JSON.stringify(serverlessConfig));
+            }    
         })
+        .catch(err => console.log(err));
+    })
+    .then(schemaExtensionsExists)
+    .then((value) => {
+        if (!value) {
+            updateSchema()
+                .then(() => console.log("Schema updated"))
+                .catch(err => console.log(err));
+        }
+        else {
+            console.log("Schema has already been extended");
+        }
+    })
     .catch(err => console.error(err))
 }
 
@@ -54,7 +67,8 @@ function appExists(){
                 }
             )
             if(response.data.length!= 0){
-                console.log("ClientID: "+ response.data[0].clientId)
+                serverlessConfig.client_id = response.data[0].id;
+                console.log("ClientID: "+ response.data[0].id)
             }
             resolve(response.data.length != 0)
         }
@@ -152,13 +166,26 @@ function createApplication(publickey){
             )
 
 
-            var grantPayload = {
-                "scopeId": "okta.users.read, okta.users.manage",
+            var grantPayloadManage = {
+                "scopeId": "okta.users.manage",
                 "issuer": process.env.TENANT
             }
-            var enableGrants = await axios.post(
+            var grantPayloadRead = {
+                "scopeId": "okta.users.read",
+                "issuer": process.env.TENANT
+            }
+            await axios.post(
                 process.env.TENANT+"/api/v1/apps/"+response.data.id+"/grants",
-                grantPayload,
+                grantPayloadManage,
+                {
+                    headers: {
+                        Authorization: 'SSWS '+process.env.API_TOKEN
+                    }
+                }
+            )
+            await axios.post(
+                process.env.TENANT+"/api/v1/apps/"+response.data.id+"/grants",
+                grantPayloadRead,
                 {
                     headers: {
                         Authorization: 'SSWS '+process.env.API_TOKEN
@@ -206,7 +233,9 @@ function updateSchema(){
                 payload,
                 {
                     headers: {
-                        Authorization: 'SSWS '+process.env.API_TOKEN
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Authorization': 'SSWS '+process.env.API_TOKEN
                     }
                 }
             )

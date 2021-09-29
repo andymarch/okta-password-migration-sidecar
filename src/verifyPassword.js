@@ -1,8 +1,9 @@
 const okta = require('@okta/okta-sdk-nodejs');
 const crypto = require('crypto');
+const firebase = require('firebase-scrypt');
 
 const client = new okta.Client({
-    orgUrl: "https://"+process.env.TENANT,
+    orgUrl: process.env.TENANT,
     authorizationMode: 'PrivateKey',
     clientId: process.env.CLIENT_ID,
     scopes: ['okta.users.read'],
@@ -32,18 +33,18 @@ module.exports.handler = async function (event) {
     const promise = new Promise(function(resolve,reject){
         var payload = JSON.parse(event.body)
         client.getUser(payload.data.context.credential.username)
-        .then(user => 
+        .then(user => {
             validatePassword(
                 user.profile.migratedPassword,
                 payload.data.context.credential.password)
-                )
-        .then(result => {
-            if(result){
-                resolve({ statusCode: 200, body: acceptPayload })
-            }
-            else {
-                resolve({ statusCode: 200, body: rejectPayload })
-            }
+            .then(result => {
+                if(result){
+                    resolve({ statusCode: 200, body: acceptPayload })
+                }
+                else {
+                    resolve({ statusCode: 200, body: rejectPayload })
+                }
+            })
         })
         .catch(err => {
             console.log(err)
@@ -53,7 +54,7 @@ module.exports.handler = async function (event) {
     return promise
 }
 
-function validatePassword(migrationInfo,password){
+async function validatePassword(migrationInfo,password){
     const promise = new Promise(function(resolve,reject){
         if(migrationInfo === undefined){
             //user does not have migration info
@@ -66,6 +67,12 @@ function validatePassword(migrationInfo,password){
                 .then((result) => {
                         resolve(result);
                     })   
+                break
+            case "firebase-scrypt":
+                validateFirebaseScrypt(migInfo,password)
+                .then((result) => {
+                        resolve(result);
+                })
                 break
             default:
                 console.log("No matching algo " + migInfo.hashAlgorithm)
@@ -85,4 +92,21 @@ async function validatePBKDF2(migrationInfo,password){
             migrationInfo.digestAlgorithm
         )
     return (derivedKey.toString('base64') === migrationInfo.hash)
+}
+
+async function validateFirebaseScrypt(migrationInfo,password){
+    const promise = new Promise(function(resolve,reject){
+        const firebaseParameter = {
+            memCost: parseInt(migrationInfo.memCost),
+            rounds: parseInt(migrationInfo.rounds),
+            saltSeparator: migrationInfo.saltSeparator,
+            signerKey: migrationInfo.signerKey
+        }
+        const scrypt = new firebase.FirebaseScrypt(firebaseParameter)
+        scrypt.hash(password, migrationInfo.salt)
+        .then(derivedKey => {
+            resolve(derivedKey === migrationInfo.hash)
+        })
+    })
+    return promise
 }
