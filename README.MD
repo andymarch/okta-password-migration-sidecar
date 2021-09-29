@@ -32,6 +32,7 @@ attributes to store the migration data.
 ```
 TENANT=https://<yourtenant>.okta.com
 API_TOKEN=<Superuser API token>
+FIXED_AUTH_SECRET=<a static value>
 ```
 
 2. Then execute the following commands
@@ -41,12 +42,12 @@ npm install
 npm run setup
 ```
 
-3. Create a config.json with the following content:
+3. Create a config.dev.json with the following content (use console output):
 
 ```
 {
-    "tenant": "<yourtenant>.okta.com",
-    "fixed_auth_secret": "<a static value>",
+    "tenant": "https://<yourtenant>.okta.com",
+    "fixed_auth_secret": "<a static value. same as above>",
     "client_id": "<the client id generated during setup>",
     "client_secret_jwt": "-----BEGIN RSA PRIVATE KEY-----\n<the PEM of the private key in app.key>\n-----END RSA PRIVATE KEY-----"
 }
