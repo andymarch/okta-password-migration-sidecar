@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const firebase = require('firebase-scrypt');
 
 const client = new okta.Client({
-    orgUrl: "https://"+process.env.TENANT,
+    orgUrl: process.env.TENANT,
     authorizationMode: 'PrivateKey',
     clientId: process.env.CLIENT_ID,
     scopes: ['okta.users.read'],
