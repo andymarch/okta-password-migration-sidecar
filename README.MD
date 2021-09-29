@@ -18,6 +18,7 @@ address internal stores for these hashes if they are accessible from the interne
 
 # Supported hashing functions
 * PBKDF2
+* Firebase Scrypt
 
 # Setup
 
@@ -76,7 +77,7 @@ npm run setupHooks
 This is creating a new Password Import inline hook pointing to ```/verify``` and
 a event hook for user.import.password pointing to ```/complete```.
 
-# Importing user data
+# Importing user data for PBKDF2
 
 To import the hash you will upload the migrated material into the user's profile
 in the following structure
@@ -108,6 +109,54 @@ curl -v -X POST \
     "login": "isaac.brock@example.com",
     "mobilePhone": "555-415-1337",
     "migratedPassword":"{ \"hash\": \"tlXeEf65TEWTW41acGi\/4LrbcT84v2H0vXSjIWdNT7Wr79qHyAB\/z30FGBiHNICUgIGKzWgA3FH5oMGHUesR+uwuWf0PhVA0seFeYi16tFMMwVdsJZjze0paBsVGxkCJ6yiL57jbe0v3MOGsPKMNUOb2n1kZk9fooajNBoTqGF4=\", \"hashAlgorithm\": \"pbkdf2\", \"digestAlgorithm\": \"sha512\", \"salt\": \"vQIHs71+xAa4lxK9J+VhfA==\", \"iterations\": 1000, \"keyLength\": 128 }"
+  },
+  "credentials": {
+    "password" : {
+      "hook": {
+        "type": "default"
+      }
+    }
+  }
+}' "https://${yourOktaDomain}/api/v1/users?activate=true"
+```
+
+If you now visit you tenant and attempt to login with "isaac.brock" and "Hello" you
+will be able to login successfully.
+
+
+# Importing user data for Firebase Scrypt
+
+To import the hash you will upload the migrated material into the user's profile
+in the following structure
+
+```
+{ 
+    "hash": "<base 64 encoded hash>",
+    "hashAlgorithm": "firebase-scrypt",
+    "salt": "<base 64 encoded salt>",
+    "rounds": 8,
+    "memCost": 14,
+    "saltSeparator": "<base 64 encoded salt separator>"
+    "signerKey": "<base 64 encoded signerKey>" 
+}
+```
+
+To create a test user this would look like the below (note you need to escape
+the JSON payload into migratedPassword)
+
+```
+curl -v -X POST \
+-H "Accept: application/json" \
+-H "Content-Type: application/json" \
+-H "Authorization: SSWS ${api_token}" \
+-d '{
+  "profile": {
+    "firstName": "Isaac",
+    "lastName": "Brock",
+    "email": "isaac.brock@example.com",
+    "login": "isaac.brock@example.com",
+    "mobilePhone": "555-415-1337",
+    "migratedPassword": "{\"hash\": \"bBCUomyMWoQl42XrCHUJ67g6RtmRUxOF6vxsv32mIhv6cCNqrncrRbW9zIj7kZ7K+x5+8/NcZG6PyiKxPmIDvg==\", \"hashAlgorithm\": \"firebase-scrypt\", \"salt\": \"42xEC+ixf3L2lw==\", \"rounds\": 8, \"memCost\": 14, \"saltSeparator\": \"Bw==\", \"signerKey\": \"jxspr8Ki0RYycVU8zykbdLGjFQ3McFUH0uiiTvC8pVMXAn210wjLNmdZJzxUECKbm0QsEmYUSDzZvpjeJ9WmXA==\"}"
   },
   "credentials": {
     "password" : {
